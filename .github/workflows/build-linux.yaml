@@ -26,11 +26,12 @@ jobs:
       run: |
         GH_HOST="https://github.com"
         git clone "${GH_HOST}/netsurf-browser/buildsystem.git"
+        git clone "${GH_HOST}/netsurf-browser/nsgenbind.git"     # ← ツールを追加
         git clone "${GH_HOST}/netsurf-browser/libwapcaplet.git"
         git clone "${GH_HOST}/netsurf-browser/libparserutils.git"
         git clone "${GH_HOST}/netsurf-browser/libhubbub.git"
         git clone "${GH_HOST}/netsurf-browser/libcss.git"
-        git clone "${GH_HOST}/netsurf-browser/libnsutils.git"   # ← 追加
+        git clone "${GH_HOST}/netsurf-browser/libnsutils.git"
         git clone "${GH_HOST}/netsurf-browser/libdom.git"
         git clone "${GH_HOST}/netsurf-browser/libnsgif.git"
         git clone "${GH_HOST}/netsurf-browser/libnsbmp.git"
@@ -44,12 +45,12 @@ jobs:
         # 1. ビルドシステムのセットアップ
         make -C buildsystem install PREFIX=$TARGET_WORKSPACE/usr
         
-        # 2. パスを通して自作ライブラリを順番にビルド
+        # 2. パスを通して自作ライブラリとツールを順番にビルド
         export PKG_CONFIG_PATH=$TARGET_WORKSPACE/usr/lib/pkgconfig:$PKG_CONFIG_PATH
         export PATH=$TARGET_WORKSPACE/usr/bin:$PATH
         
-        # libnsutils をループ内（libdomの前）に追加しました
-        for lib in libwapcaplet libparserutils libhubbub libcss libnsutils libdom libnsgif libnsbmp libnsfb libnspsl; do
+        # ループの最初に nsgenbind を配置しました（これで $TARGET_WORKSPACE/usr/bin/nsgenbind が生成されます）
+        for lib in nsgenbind libwapcaplet libparserutils libhubbub libcss libnsutils libdom libnsgif libnsbmp libnsfb libnspsl; do
           make -C $lib install PREFIX=$TARGET_WORKSPACE/usr Component=$lib
         done
         
