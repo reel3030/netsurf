@@ -1,0 +1,40 @@
+name: Build NetSurf for Linux (GTK3)
+
+on:
+  workflow_dispatch: # 手動実行用
+
+jobs:
+  build:
+    # Celeron PCのLinuxに合わせる（古いLinuxなら ubuntu-20.04 や 22.04 に変更）
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential git bison flex pkg-config \
+          libgtk-3-dev libcurl4-openssl-dev libssl-dev \
+          libpng-dev libjpeg-dev libwebp-dev libexpat1-dev \
+          gperf libhtmlcxx-dev
+
+    - name: Clone NetSurf Workspace
+      run: |
+        # NetSurfはワークスペース管理用のリポジトリからcloneするのが一番楽です
+        git clone git://git.netsurf-browser.org/netsurf-workspace.git
+        cd netsurf-workspace
+        # 必要な関連ライブラリを自動で引き抜くスクリプトを実行
+        ./ns-clone
+
+    - name: Build NetSurf
+      run: |
+        cd netsurf-workspace
+        # ターゲットをGTK3（Linuxの一般的なデスクトップ）に指定してコンパイル
+        NETSURF_TARGET=gtk3 make
+
+    - name: Upload Binary Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: netsurf-linux-binary
+        # ビルドされて出てきた実行ファイル（バイナリ）のパスを指定
+        path: netsurf-workspace/netsurf/nsgtk3
