@@ -1,15 +1,14 @@
 name: Build NetSurf for Linux (GTK3)
 
 on:
-  workflow_dispatch: # 手動実行用
+  workflow_dispatch: # GitHub上でボタンを押して手動実行できるようにします
 
 jobs:
   build:
-    # Celeron PCのLinuxに合わせる（古いLinuxなら ubuntu-20.04 や 22.04 に変更）
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install dependencies
+    - name: Install Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -18,23 +17,45 @@ jobs:
           libpng-dev libjpeg-dev libwebp-dev libexpat1-dev \
           gperf libhtmlcxx-dev
 
-    - name: Clone NetSurf Workspace
+    - name: Clone NetSurf Source from GitHub Mirror
       run: |
-        # NetSurfはワークスペース管理用のリポジトリからcloneするのが一番楽です
-        git clone git://git.netsurf-browser.org/netsurf-workspace.git
-        cd netsurf-workspace
-        # 必要な関連ライブラリを自動で引き抜くスクリプトを実行
-        ./ns-clone
+        # エラーが出る git:// ではなく、HTTPSで安全に取得します
+        git clone https://github.com
+        
+    - name: Fetch Required Sub-Libraries
+      run: |
+        # ビルドに必要な関連パーツもすべてGitHubから引っ張ります
+        git clone https://github.com/netsurf-browser/buildsystem.git
+        git clone https://github.com/netsurf-browser/libwapcaplet.git
+        git clone https://github.com/netsurf-browser/libparserutils.git
+        git clone https://github.com/netsurf-browser/libcss.git
+        git clone https://github.com/netsurf-browser/libdom
+        git clone https://github.com/netsurf-browser/libnsgif
+        git clone https://github.com/netsurf-browser/libnsbmp
+        git clone https://github.com/netsurf-browser/libnsfb
 
-    - name: Build NetSurf
+    - name: Build Libraries and NetSurf Browser
       run: |
-        cd netsurf-workspace
-        # ターゲットをGTK3（Linuxの一般的なデスクトップ）に指定してコンパイル
-        NETSURF_TARGET=gtk3 make
+        export TARGET_WORKSPACE=$(pwd)
+        
+        # 1. ビルドシステムの設定
+        make -C buildsystem install PREFIX=$TARGET_WORKSPACE/usr
+        
+        # 2. パスを通して依存ライブラリを順番にビルド
+        export PKG_CONFIG_PATH=$TARGET_WORKSPACE/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+        export PATH=$TARGET_WORKSPACE/usr/bin:$PATH
+        
+        for lib in libwapcaplet libparserutils libcss libdom libnsgif libnsbmp libnsfb; do
+          make -C $lib install PREFIX=$TARGET_WORKSPACE/usr Component=$lib
+        done
+        
+        # 3. 本体のコンパイル（LinuxネイティブなGTK3を指定）
+        cd netsurf
+        NETSURF_TARGET=gtk3 make PREFIX=$TARGET_WORKSPACE/usr
 
     - name: Upload Binary Artifact
       uses: actions/upload-artifact@v4
       with:
         name: netsurf-linux-binary
-        # ビルドされて出てきた実行ファイル（バイナリ）のパスを指定
-        path: netsurf-workspace/netsurf/nsgtk3
+        # 生成された実行ファイル（バイナリ）をzipにして回収
+        path: netsurf/nsgtk3
