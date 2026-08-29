@@ -15,7 +15,7 @@ jobs:
           build-essential git bison flex pkg-config \
           libgtk-3-dev libcurl4-openssl-dev libssl-dev \
           libpng-dev libjpeg-dev libwebp-dev libexpat1-dev \
-          gperf libhtmlcxx-dev libutf8proc-dev             # ← libutf8proc-dev を追加
+          gperf libhtmlcxx-dev libutf8proc-dev
 
     - name: Clone NetSurf Source from GitHub Mirror
       run: |
@@ -30,6 +30,7 @@ jobs:
         git clone "${GH_HOST}/netsurf-browser/libparserutils.git"
         git clone "${GH_HOST}/netsurf-browser/libhubbub.git"
         git clone "${GH_HOST}/netsurf-browser/libcss.git"
+        git clone "${GH_HOST}/netsurf-browser/libnsutils.git"   # ← 追加
         git clone "${GH_HOST}/netsurf-browser/libdom.git"
         git clone "${GH_HOST}/netsurf-browser/libnsgif.git"
         git clone "${GH_HOST}/netsurf-browser/libnsbmp.git"
@@ -47,8 +48,8 @@ jobs:
         export PKG_CONFIG_PATH=$TARGET_WORKSPACE/usr/lib/pkgconfig:$PKG_CONFIG_PATH
         export PATH=$TARGET_WORKSPACE/usr/bin:$PATH
         
-        # libutf8proc をループから除外しました（システム側のライブラリを自動参照します）
-        for lib in libwapcaplet libparserutils libhubbub libcss libdom libnsgif libnsbmp libnsfb libnspsl; do
+        # libnsutils をループ内（libdomの前）に追加しました
+        for lib in libwapcaplet libparserutils libhubbub libcss libnsutils libdom libnsgif libnsbmp libnsfb libnspsl; do
           make -C $lib install PREFIX=$TARGET_WORKSPACE/usr Component=$lib
         done
         
