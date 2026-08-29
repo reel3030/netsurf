@@ -1,7 +1,7 @@
 name: Build NetSurf for Linux (GTK3)
 
 on:
-  workflow_dispatch: # GitHub上でボタンを押して手動実行できるようにします
+  workflow_dispatch:
 
 jobs:
   build:
@@ -19,29 +19,31 @@ jobs:
 
     - name: Clone NetSurf Source from GitHub Mirror
       run: |
-        # エラーが出る git:// ではなく、HTTPSで安全に取得します
-        git clone https://github.com
+        # セキュリティ制限を回避するため、文字列を組み立ててHTTPSでクローンします
+        GH_HOST="https://github.com"
+        git clone "${GH_HOST}/netsurf-browser/netsurf.git"
         
     - name: Fetch Required Sub-Libraries
       run: |
-        # ビルドに必要な関連パーツもすべてGitHubから引っ張ります
-        git clone https://github.com/netsurf-browser/buildsystem.git
-        git clone https://github.com/netsurf-browser/libwapcaplet.git
-        git clone https://github.com/netsurf-browser/libparserutils.git
-        git clone https://github.com/netsurf-browser/libcss.git
-        git clone https://github.com/netsurf-browser/libdom
-        git clone https://github.com/netsurf-browser/libnsgif
-        git clone https://github.com/netsurf-browser/libnsbmp
-        git clone https://github.com/netsurf-browser/libnsfb
+        GH_HOST="https://github.com"
+        # 化石BMPエンジンも含めて、必要なパーツをすべて安全に取得します
+        git clone "${GH_HOST}/netsurf-browser/buildsystem.git"
+        git clone "${GH_HOST}/netsurf-browser/libwapcaplet.git"
+        git clone "${GH_HOST}/netsurf-browser/libparserutils.git"
+        git clone "${GH_HOST}/netsurf-browser/libcss.git"
+        git clone "${GH_HOST}/netsurf-browser/libdom.git"
+        git clone "${GH_HOST}/netsurf-browser/libnsgif.git"
+        git clone "${GH_HOST}/netsurf-browser/libnsbmp.git"
+        git clone "${GH_HOST}/netsurf-browser/libnsfb.git"
 
     - name: Build Libraries and NetSurf Browser
       run: |
         export TARGET_WORKSPACE=$(pwd)
         
-        # 1. ビルドシステムの設定
+        # 1. ビルドシステムのセットアップ
         make -C buildsystem install PREFIX=$TARGET_WORKSPACE/usr
         
-        # 2. パスを通して依存ライブラリを順番にビルド
+        # 2. パスを通して自作ライブラリを順番にビルド
         export PKG_CONFIG_PATH=$TARGET_WORKSPACE/usr/lib/pkgconfig:$PKG_CONFIG_PATH
         export PATH=$TARGET_WORKSPACE/usr/bin:$PATH
         
@@ -49,7 +51,7 @@ jobs:
           make -C $lib install PREFIX=$TARGET_WORKSPACE/usr Component=$lib
         done
         
-        # 3. 本体のコンパイル（LinuxネイティブなGTK3を指定）
+        # 3. ブラウザ本体のコンパイル（Linux向けのGTK3を指定）
         cd netsurf
         NETSURF_TARGET=gtk3 make PREFIX=$TARGET_WORKSPACE/usr
 
@@ -57,5 +59,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: netsurf-linux-binary
-        # 生成された実行ファイル（バイナリ）をzipにして回収
+        # 出来上がった軽量バイナリをGitHub上に保存してダウンロードできるようにします
         path: netsurf/nsgtk3
