@@ -19,22 +19,23 @@ jobs:
 
     - name: Clone NetSurf Source from GitHub Mirror
       run: |
-        # セキュリティ制限を回避するため、文字列を組み立ててHTTPSでクローンします
         GH_HOST="https://github.com"
         git clone "${GH_HOST}/netsurf-browser/netsurf.git"
         
     - name: Fetch Required Sub-Libraries
       run: |
         GH_HOST="https://github.com"
-        # 化石BMPエンジンも含めて、必要なパーツをすべて安全に取得します
         git clone "${GH_HOST}/netsurf-browser/buildsystem.git"
         git clone "${GH_HOST}/netsurf-browser/libwapcaplet.git"
         git clone "${GH_HOST}/netsurf-browser/libparserutils.git"
+        git clone "${GH_HOST}/netsurf-browser/libhubbub.git"      # ← 追加
         git clone "${GH_HOST}/netsurf-browser/libcss.git"
         git clone "${GH_HOST}/netsurf-browser/libdom.git"
         git clone "${GH_HOST}/netsurf-browser/libnsgif.git"
         git clone "${GH_HOST}/netsurf-browser/libnsbmp.git"
         git clone "${GH_HOST}/netsurf-browser/libnsfb.git"
+        git clone "${GH_HOST}/netsurf-browser/libnspsl.git"     # ← 将来のエラー防止に追加
+        git clone "${GH_HOST}/netsurf-browser/libutf8proc.git"  # ← 将来のエラー防止に追加
 
     - name: Build Libraries and NetSurf Browser
       run: |
@@ -47,7 +48,8 @@ jobs:
         export PKG_CONFIG_PATH=$TARGET_WORKSPACE/usr/lib/pkgconfig:$PKG_CONFIG_PATH
         export PATH=$TARGET_WORKSPACE/usr/bin:$PATH
         
-        for lib in libwapcaplet libparserutils libcss libdom libnsgif libnsbmp libnsfb; do
+        # 依存関係が正しい順にソートされています (parserutils -> hubbub -> css -> dom)
+        for lib in libwapcaplet libparserutils libhubbub libcss libutf8proc libdom libnsgif libnsbmp libnsfb libnspsl; do
           make -C $lib install PREFIX=$TARGET_WORKSPACE/usr Component=$lib
         done
         
@@ -59,5 +61,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: netsurf-linux-binary
-        # 出来上がった軽量バイナリをGitHub上に保存してダウンロードできるようにします
         path: netsurf/nsgtk3
